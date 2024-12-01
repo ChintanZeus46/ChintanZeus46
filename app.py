@@ -3,19 +3,8 @@ import math
 from datetime import datetime
 import pytz
 import folium
-from flask import Flask, render_template
 
 app = Flask(__name__)
-freezer = Freezer(app)
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-if __name__ == '__main__':
-    # Use this line to generate static files
-    freezer.freeze()
-
 
 def calculate_solar_position(latitude, longitude, date_time):
     # Convert latitude and longitude to radians
