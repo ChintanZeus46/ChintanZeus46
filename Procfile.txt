@@ -1,1 +1,0 @@
-web: gunicorn solar_calculator:app
