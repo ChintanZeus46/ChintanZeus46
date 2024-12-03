@@ -4,17 +4,19 @@ from datetime import datetime
 import pytz
 import folium
 
+# Initialize Flask app
 app = Flask(__name__)
 
+# Function to calculate solar position
 def calculate_solar_position(latitude, longitude, date_time):
     # Convert latitude and longitude to radians
     lat = math.radians(latitude)
     lon = math.radians(longitude)
 
-    # Calculate day of year
+    # Calculate day of the year
     day_of_year = date_time.timetuple().tm_yday
 
-    # Calculate equation of time
+    # Calculate the equation of time
     b = (360 / 365) * (day_of_year - 81)
     eot = 9.87 * math.sin(2 * math.radians(b)) - 7.53 * math.cos(math.radians(b)) - 1.5 * math.sin(math.radians(b))
 
@@ -39,42 +41,52 @@ def calculate_solar_position(latitude, longitude, date_time):
 
     return elevation, azimuth
 
+# Route for the main page
 @app.route('/', methods=['GET', 'POST'])
 def index():
     map_html = None
     output = None
     if request.method == 'POST':
         try:
+            # Get form data
             latitude = float(request.form['latitude'])
             longitude = float(request.form['longitude'])
-            area = float(request.form['area'])
-
-            # Get current time
-            date_time = datetime.now(pytz.UTC)
+            area = float(request.form['area'])  # in square meters
 
             # Calculate solar position
-            elevation, azimuth = calculate_solar_position(latitude, longitude, date_time)
+            elevation, azimuth = calculate_solar_position(latitude, longitude, datetime.now(pytz.UTC))
 
             # Estimate energy output
             panel_efficiency = 0.2  # 20% efficiency
             sunlight_hours = 2000  # Average sunlight hours per year
             energy_output = area * panel_efficiency * sunlight_hours
 
-            # Generate map with marker
+            # Calculate number of solar plates required
+            plate_length = 5.4  # feet
+            plate_width = 3.25  # feet
+            gap = 1  # feet
+            plate_area_with_gap = (plate_length + gap) * (plate_width + gap)  # Area including gap
+            area_in_feet = area * 10.7639  # Convert square meters to square feet
+            num_plates = area_in_feet / plate_area_with_gap
+
+            # Generate map
             map_ = folium.Map(location=[latitude, longitude], zoom_start=12)
             folium.Marker([latitude, longitude],
-                          popup=f"Solar Panel Position<br>Elevation: {elevation:.2f}°<br>Azimuth: {azimuth:.2f}°").add_to(map_)
+                          popup=f"Elevation: {elevation:.2f}°<br>Azimuth: {azimuth:.2f}°").add_to(map_)
             map_html = map_._repr_html_()
 
+            # Output data
             output = {
                 'elevation': elevation,
                 'azimuth': azimuth,
                 'energy_output': energy_output,
+                'num_plates': math.ceil(num_plates)  # Round up for full coverage
             }
         except Exception as e:
             output = {'error': str(e)}
 
     return render_template('index.html', map_html=map_html, output=output)
 
+# Run the app
 if __name__ == '__main__':
     app.run(debug=True)
